@@ -19,6 +19,7 @@ from reviews.models import Category, Comment, Genre, GenreTitle, Review, Title
 
 User = get_user_model()
 CSVRow = dict[str | None, str | list[str] | None]
+DEFAULT_DATA_DIRECTORY = 'static/data'
 
 
 class RowResult(IntEnum):
@@ -60,8 +61,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         """Добавить каталог данных и режим строгой проверки."""
         parser.add_argument(
-            '--path', type=Path, default=settings.BASE_DIR / 'static' / 'data',
-            help='Каталог с семью CSV-файлами (по умолчанию static/data).',
+            '--path', type=Path,
+            default=settings.BASE_DIR / DEFAULT_DATA_DIRECTORY,
+            help=(
+                'Каталог с семью CSV-файлами '
+                f'(по умолчанию {DEFAULT_DATA_DIRECTORY}).'
+            ),
         )
         parser.add_argument(
             '--strict', action='store_true',

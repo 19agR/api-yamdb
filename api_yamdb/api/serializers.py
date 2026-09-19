@@ -5,7 +5,6 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.tokens import default_token_generator
-from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -15,26 +14,9 @@ from users.constants import EMAIL_MAX_LENGTH, USERNAME_MAX_LENGTH
 from users.validators import username_validator, validate_username
 
 from .exceptions import DuplicateReviewError
+from .fields import NormalizedEmailField, NormalizedUsernameField
 
 User = get_user_model()
-
-
-class NormalizedEmailField(serializers.EmailField):
-    """Проверить уникальность email после нормализации домена Django."""
-
-    def to_internal_value(self, data: Any) -> str:
-        """Привести домен к нижнему регистру до проверки валидаторов."""
-        return User.objects.normalize_email(super().to_internal_value(data))
-
-
-class NormalizedUsernameField(serializers.CharField):
-    """Согласовать проверку имени с нормализацией UserManager."""
-
-    def to_internal_value(self, data: Any) -> str:
-        """Проверить исходные символы и нормализовать допустимое имя."""
-        value = super().to_internal_value(data)
-        username_validator(value)
-        return User.normalize_username(value)
 
 
 class SignupSerializer(serializers.Serializer):
@@ -64,16 +46,10 @@ class SignupSerializer(serializers.Serializer):
 
     def create(self, validated_data: dict[str, Any]) -> User:
         """Создать объект из проверенных данных."""
-        try:
-            with transaction.atomic():
-                user, _ = User.objects.get_or_create(
-                    **validated_data,
-                    defaults={'password': make_password(None)},
-                )
-        except IntegrityError:
-            # A competing registration may reserve a field after validation.
-            self.validate(validated_data)
-            raise
+        user, _ = User.objects.get_or_create(
+            **validated_data,
+            defaults={'password': make_password(None)},
+        )
         return user
 
 
@@ -192,7 +168,6 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date')
-        read_only_fields = ('pub_date',)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Проверить ограничения, зависящие от нескольких полей."""
@@ -213,4 +188,3 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        read_only_fields = ('pub_date',)

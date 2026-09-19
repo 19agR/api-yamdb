@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
 from django.db.models import Avg, QuerySet
 from django.shortcuts import get_object_or_404
 from django.utils.functional import cached_property
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, permissions, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,7 +17,6 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import Category, Comment, Genre, Review, Title
 
-from .exceptions import DuplicateReviewError
 from .filters import TitleFilter
 from .permissions import (
     IsAdmin, IsAdminOrReadOnly, IsAuthorModeratorAdminOrReadOnly,
@@ -127,7 +126,7 @@ class TitleViewSet(PartialUpdateModelViewSet):
 
     queryset = Title.objects.select_related('category').prefetch_related(
         'genre',
-    ).annotate(rating=Avg('reviews__score')).order_by('id')
+    ).annotate(rating=Avg('reviews__score')).order_by('name')
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -145,7 +144,9 @@ class ReviewViewSet(PartialUpdateModelViewSet):
     """Ограничить операции отзывами выбранного произведения."""
 
     serializer_class = ReviewSerializer
-    permission_classes = (IsAuthorModeratorAdminOrReadOnly,)
+    permission_classes = (
+        IsAuthenticatedOrReadOnly, IsAuthorModeratorAdminOrReadOnly,
+    )
 
     @cached_property
     def title(self) -> Title:
@@ -162,20 +163,16 @@ class ReviewViewSet(PartialUpdateModelViewSet):
 
     def perform_create(self, serializer: ReviewSerializer) -> None:
         """Сохранить публикацию с автором и родительским объектом."""
-        try:
-            with transaction.atomic():
-                serializer.save(author=self.request.user, title=self.title)
-        except IntegrityError as error:
-            if self.title.reviews.filter(author=self.request.user).exists():
-                raise DuplicateReviewError from error
-            raise
+        serializer.save(author=self.request.user, title=self.title)
 
 
 class CommentViewSet(PartialUpdateModelViewSet):
     """Ограничить комментарии отзывом выбранного произведения."""
 
     serializer_class = CommentSerializer
-    permission_classes = (IsAuthorModeratorAdminOrReadOnly,)
+    permission_classes = (
+        IsAuthenticatedOrReadOnly, IsAuthorModeratorAdminOrReadOnly,
+    )
 
     @cached_property
     def review(self) -> Review:

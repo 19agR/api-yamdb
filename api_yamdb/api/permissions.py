@@ -27,10 +27,6 @@ class IsAdminOrReadOnly(IsAdmin):
 class IsAuthorModeratorAdminOrReadOnly(BasePermission):
     """Проверить право на изменение пользовательской публикации."""
 
-    def has_permission(self, request: Request, view: APIView) -> bool:
-        """Проверить права на операцию над ресурсом."""
-        return request.method in SAFE_METHODS or request.user.is_authenticated
-
     def has_object_permission(
         self, request: Request, view: APIView, obj: Publication,
     ) -> bool:

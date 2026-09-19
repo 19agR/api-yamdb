@@ -26,13 +26,20 @@ class User(AbstractUser):
     )
     bio = models.TextField('О себе', blank=True)
     role = models.CharField(
-        'Роль', max_length=20, choices=Role.choices, default=Role.USER,
+        'Роль',
+        max_length=max(len(role.value) for role in Role),
+        choices=Role.choices,
+        default=Role.USER,
     )
 
     class Meta:
-        ordering = ('id',)
+        ordering = ('username',)
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+
+    def __str__(self) -> str:
+        """Вернуть краткое представление объекта."""
+        return self.username
 
     @property
     def is_admin(self) -> bool:
@@ -43,7 +50,3 @@ class User(AbstractUser):
     def is_moderator(self) -> bool:
         """Проверить роль модератора."""
         return self.role == self.Role.MODERATOR
-
-    def __str__(self) -> str:
-        """Вернуть краткое представление объекта."""
-        return self.username

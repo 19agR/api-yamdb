@@ -18,7 +18,7 @@ class NameSlugModel(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ('id',)
+        ordering = ('name',)
 
     def __str__(self) -> str:
         """Вернуть краткое представление объекта."""
@@ -47,7 +47,7 @@ class Title(models.Model):
     name = models.CharField(
         'Название', max_length=NAME_MAX_LENGTH, db_index=True,
     )
-    year = models.IntegerField(
+    year = models.PositiveSmallIntegerField(
         'Год выпуска', validators=[validate_year], db_index=True,
     )
     description = models.TextField('Описание', blank=True)
@@ -61,7 +61,7 @@ class Title(models.Model):
     )
 
     class Meta:
-        ordering = ('id',)
+        ordering = ('name',)
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
 
@@ -104,7 +104,7 @@ class Publication(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ('id',)
+        ordering = ('-pub_date',)
 
     def __str__(self) -> str:
         """Вернуть краткое представление объекта."""
